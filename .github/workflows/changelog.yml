@@ -5,13 +5,12 @@
 name: changelog
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened, labeled, unlabeled]
-    branches:
-      - main
+  workflow_dispatch:
+
 jobs:
   changelog:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     if: ${{ !contains(github.event.pull_request.labels.*.name, 'dependencies') && !contains(github.event.pull_request.labels.*.name, 'Skip Changelog')}}
 
     steps:

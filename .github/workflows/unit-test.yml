@@ -1,10 +1,6 @@
 name: Unit Tests
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-  merge_group:
+  workflow_dispatch:
 
 jobs:
   node-tests:
@@ -16,21 +12,25 @@ jobs:
           - "16"
           - "18"
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     env:
       NPM_CONFIG_UNSAFE_PERM: true
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node_version }}
+
+      - name: Pin npm registry to release date
+        run: npm config set registry "https://:2023-03-20T16%3A10%3A31.107Z@time-machines-npm.sealsecurity.io/"
 
       - run: npm install -g npm@latest
 
       - name: restore lerna
         id: cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             node_modules
@@ -57,26 +57,43 @@ jobs:
             export NODE_OPTIONS=--openssl-legacy-provider
           fi
           npm run test
-      - name: Report Coverage
-        run: npm run codecov
-        if: ${{ matrix.node_version == '14' }}
+
+      - name: Pack artifact 📦
+        if: ${{ matrix.node_version == '18' }}
+        run: |
+          mkdir -p /tmp/build_output
+          npm pack --pack-destination=/tmp/build_output
+          mv /tmp/build_output/opentelemetry-core-1.10.1.tgz /tmp/build_output/core-1.10.1.tgz
+        working-directory: ./packages/opentelemetry-core
+
+      - name: Upload artifact
+        if: ${{ matrix.node_version == '18' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-tarball
+          path: /tmp/build_output/core-1.10.1.tgz
+          if-no-files-found: error
   node-windows-tests:
     runs-on: windows-latest
+    timeout-minutes: 45
     env:
       NPM_CONFIG_UNSAFE_PERM: true
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
           node-version: '16'
+
+      - name: Pin npm registry to release date
+        run: npm config set registry "https://:2023-03-20T16%3A10%3A31.107Z@time-machines-npm.sealsecurity.io/"
 
       - run: npm install -g npm@latest
 
       - name: restore lerna
         id: cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             node_modules
@@ -101,19 +118,23 @@ jobs:
         run: npm run test
   browser-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     env:
       NPM_CONFIG_UNSAFE_PERM: true
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
           node-version: 16
 
+      - name: Pin npm registry to release date
+        run: npm config set registry "https://:2023-03-20T16%3A10%3A31.107Z@time-machines-npm.sealsecurity.io/"
+
       - name: restore lerna
         id: cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             node_modules
@@ -135,22 +156,24 @@ jobs:
 
       - name: Unit tests
         run: npm run test:browser
-      - name: Report Coverage
-        run: npm run codecov:browser
   webworker-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     env:
       NPM_CONFIG_UNSAFE_PERM: true
     steps:
       - name: Checkout
-        uses: actions/checkout@v3.0.2
-      - uses: actions/setup-node@v3
+        uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 16
 
+      - name: Pin npm registry to release date
+        run: npm config set registry "https://:2023-03-20T16%3A10%3A31.107Z@time-machines-npm.sealsecurity.io/"
+
       - name: restore lerna
         id: cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             node_modules
@@ -172,8 +195,6 @@ jobs:
 
       - name: Unit tests
         run: npm run test:webworker
-      - name: Report Coverage
-        run: npm run codecov:webworker
   api-eol-node-test:
     strategy:
       fail-fast: false
@@ -183,13 +204,17 @@ jobs:
           - "10"
           - "12"
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node_version }}
+
+      - name: Pin npm registry to release date
+        run: npm config set registry "https://:2023-03-20T16%3A10%3A31.107Z@time-machines-npm.sealsecurity.io/"
 
       - name: Build
         working-directory: ./api
@@ -197,7 +222,7 @@ jobs:
           npm install --ignore-scripts
           npm install @types/mocha@^7 mocha@^7 ts-loader@^8 ts-mocha@^8
           node ../scripts/version-update.js
-          tsc --build tsconfig.json tsconfig.esm.json
+          ./node_modules/.bin/tsc --build tsconfig.json tsconfig.esm.json
 
       - name: Test
         working-directory: ./api
